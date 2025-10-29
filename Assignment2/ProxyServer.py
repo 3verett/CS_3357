@@ -9,8 +9,17 @@ import os
 
 
 def main():
-    # set server hostname and port
-    serverHost = sys.argv[1]
+    # set server hostname
+    try:
+        if len(sys.argv) < 2:
+            print("Usage: ProxyServer.py <serverHost>")
+            sys.exit(1)
+        serverHost = sys.argv[1]
+    except IndexError:
+        print("Usage: ProxyServer.py <serverHost>")
+        sys.exit(1)
+
+    # set server port
     serverPort = 8888
 
     # check for cache directory
@@ -23,11 +32,12 @@ def main():
     proxySocket.bind((serverHost, serverPort))
     proxySocket.listen(5)
 
-    print("Proxy server running... Press Ctrl+C to stop.\nReady to serve...")
+    print("Proxy server running... Press Ctrl+C to stop.")
 
     while True:
+        print("Ready to serve...\n")
         clientSocket, clientAddress = proxySocket.accept()
-        print(f"Received a connection from: {clientAddress}")
+        print(f"Received a connection from: {clientAddress}\n")
 
         handleRequest(clientSocket)
 
@@ -47,7 +57,7 @@ def handleRequest(clientSocket):
 
     # Check for GET method
     if method != "GET":
-        error = f"HTTP/1.0 405 Method Not Allowed\nContent-Type: text/plain\ncontent-Length: {len(request)}\n405 Method Not Allowed"
+        error = f"HTTP/1.0 405 Method Not Allowed\r\nContent-Type: text/plain\r\ncontent-Length: 22\r\n\r\n405 Method Not Allowed"
         clientSocket.sendall(error.encode())
         clientSocket.close()
         return
@@ -68,9 +78,14 @@ def handleRequest(clientSocket):
         host = hostPort
         port = 80
 
+    if port != 80:
+        hostWPort = f"{host}_{port}"
+    else:
+        hostWPort = host
+
     print(f"Extracted:\nHost: {host}, Port:{port}, Path: {path}")
 
-    filepath = "cache/" + host + path.replace("/","_")
+    filepath = "cache/" + hostWPort + path.replace("/", "_")
     if os.path.exists(filepath):
         print("<<< CACHE HIT >>>")
         with open(filepath, "rb") as cachedFile:
@@ -80,14 +95,14 @@ def handleRequest(clientSocket):
     else:
         print("<<< CACHE MISS >>>")
         try:
-            print("Connecting to Server...")
+            print("Connecting to Server...\n")
             # connect to server
             serverSocket = socket(AF_INET, SOCK_STREAM)
             serverSocket.connect((host, port))
             print(f"Connection successful to {host}:{port}")
 
             # GET request for server
-            GETReq = f"GET {path} HTTP/1.0\r\nHost: {host}\r\nConnection: close\r\nUser-Agent: GuyeaProxy/1.0\r\n\r\n"
+            GETReq = f"GET {path} HTTP/1.0\r\nHost: {host}\r\nConnection: close\r\nUser-Agent: SimpleProxy/1.0\r\n\r\n"
             serverSocket.sendall(GETReq.encode())
 
             # response
@@ -107,6 +122,7 @@ def handleRequest(clientSocket):
             error = "HTTP/1.0 502 Bad Gateway\r\nContent-Type: text/plain\r\nContent-Length: 15\r\n\r\n502 Bad Gateway"
             clientSocket.sendall(error.encode())
             clientSocket.close()
+            serverSocket.close()
 
     clientSocket.close()
 

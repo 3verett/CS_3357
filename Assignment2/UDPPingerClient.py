@@ -9,6 +9,10 @@ import sys
 
 
 def main():
+    if len(sys.argv) < 3:
+        print("Usage: UDPPingerClient.py <serverHost> <port>")
+        sys.exit(1)
+
     # Get hostname and port from arguments
     serverHost = sys.argv[1]
     serverPort = int(sys.argv[2])
