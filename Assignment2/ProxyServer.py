@@ -38,13 +38,15 @@ def handleRequest(clientSocket):
     print(f"Raw request:\n{request}")
 
     # split request into method and address
-    request.split("http://")
-    method = request[0].strip()
-    address = request[1].strip()
+    requestParts = request.split("http://")
+    method = requestParts[0].strip()
+    address = requestParts[1].strip()
 
     # Check for GET method
     if method != "GET":
-        print(f"HTTP/1.0 405 Method Not Allowed\nContent-Type: text/plain\ncontent-Length: {len(request)}\n405 Method Not Allowed")
+        error = f"HTTP/1.0 405 Method Not Allowed\nContent-Type: text/plain\ncontent-Length: {len(request)}\n405 Method Not Allowed"
+        clientSocket.send(error)
+        clientSocket.close()
         return
 
     # remove HTTP ver.
@@ -64,3 +66,44 @@ def handleRequest(clientSocket):
         port = 80
 
     print(f"Host: {host}\nPort: {port}\nPath: {path}")
+
+    filepath = "cache/" + host + path.replace("/","_")
+    if os.path.exists(filepath):
+        print("<<< CACHE HIT >>>")
+        with open(filepath, "rb") as cachedFile:
+            data = cachedFile.read()
+            clientSocket.send(data)
+            print(f"Served from Local Cache: {filepath}")
+    else:
+        print("<<< CACHE MISS >>>")
+        try:
+            # connect to server
+            serverSocket = socket(AF_INET, SOCK_STREAM)
+            serverSocket.connect((host, port))
+
+            # GET request for server
+            GETReq = f"GET {path} HTTP/1.0\r\nHost: {host}\r\nConnection: close\r\nUser-Agent: SimpleProxy/1.0\r\n\r\n"
+            serverSocket.send(GETReq.encode())
+
+            # response
+            with open(filepath, "wb") as cacheFile:
+                while True:
+                    data = serverSocket.recv(4096)
+                    if not data:
+                        break
+                    clientSocket.sendall(data)
+                    cacheFile.write(data)
+
+            print(f"Saved to cache: {filepath}")
+            serverSocket.close()
+        except Exception as e:
+            print("Error fetching from origin:", e)
+            error = "HTTP/1.0 502 Bad Gateway\r\nContent-Type: text/plain\r\nContent-Length: 15\r\n\r\n502 Bad Gateway"
+            clientSocket.send(error.encode)
+            clientSocket.close()
+
+    clientSocket.close()
+
+
+if __name__ == "__main__":
+    main()
