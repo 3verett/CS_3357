@@ -1,6 +1,6 @@
 """
 Author: Everett Guyea
-Date: 25-10-2025
+Date: 29-10-2025
 """
 
 import time
@@ -21,6 +21,7 @@ def main():
     for seqNum in range(1, 11):
         # create ping message
         sentTime = time.time()
+        printTime = time.strftime("%a %b %d %H:%M:%S %Y", time.localtime())
         message = f"Ping {seqNum} {sentTime}"
 
         try:
@@ -32,7 +33,7 @@ def main():
             recvTime = time.time()
             rtt = recvTime - sentTime
 
-            print(f"Reply from {serverHost}: PING {seqNum} {time}\nRTT: {rtt}")
+            print(f"Reply from {serverHost}: PING {seqNum} {printTime}\nRTT: {rtt}")
         except timeout:
             print(f"Request timed out.")
 
